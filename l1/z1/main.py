@@ -1,13 +1,18 @@
-from math import cos, prod, sqrt
+from math import cos, sqrt
 from typing import Tuple, Callable
 from time import time
 from random import uniform
+from functools import reduce
 
 DELTA = 0.01
 NEIGHBOURS_COUNT = 8
 
 vector = Tuple[float, float, float, float]
 testfunc = Callable[[vector], float]
+
+
+def prod(iterable):
+    return reduce(lambda a,b: a*b, iterable)
 
 
 def norm(x: vector) -> float:
