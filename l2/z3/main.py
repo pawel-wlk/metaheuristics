@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import List
 from sys import maxsize
-from random import random, choice, randrange, sample
+from random import random, choice, sample
 from time import time
 from sys import stderr
 from math import exp
@@ -37,7 +37,6 @@ class Maze:
                 if el == self.AGENT:
                     return (j, i)
 
-
     def eval_path(self, path: List[Direction]):
         cost = 0
         x_pos, y_pos = self.start_pos
@@ -65,7 +64,6 @@ class Maze:
         direction = choice(list(Direction))
         xmove, ymove = direction.value
 
-
         while len(path) < self.n * self.m / 3:
             if self.map[y+ymove][x+xmove] == 8:
                 path.append(direction)
@@ -89,6 +87,7 @@ class Maze:
             path, found = self.random_walk()
 
         return path
+
 
 def tweak(path):
     copy = path.copy()
@@ -118,8 +117,6 @@ def simulated_annealing(maze, max_time):
         t *= DECREASE_FACTOR
 
         if quality_s < quality_best:
-            if abs(quality_s - quality_best)/quality_best < 0.000000001:
-                return best
             best = s
             quality_best = quality_s
 
