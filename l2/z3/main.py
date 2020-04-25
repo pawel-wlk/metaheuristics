@@ -1,14 +1,14 @@
 from enum import Enum
 from typing import List
 from sys import maxsize
-from random import random, choice, randrange
+from random import random, choice, randrange, sample
 from time import time
 from sys import stderr
 from math import exp
 
 
-INIT_TEMP = 1000000
-DECREASE_FACTOR = 0.999
+INIT_TEMP = 100000
+DECREASE_FACTOR = 0.99
 
 
 class Direction(Enum):
@@ -28,6 +28,8 @@ class Maze:
         self.map = maze_map
         self.start_pos = self.find_agent()
         self.max_steps = max_steps
+        self.n = len(maze_map)
+        self.m = len(maze_map[0])
 
     def find_agent(self):
         for i, _ in enumerate(self.map):
@@ -35,18 +37,6 @@ class Maze:
                 if el == self.AGENT:
                     return (j, i)
 
-
-    def get_move_to_goal(self, x, y):
-        if self.map[y+1][x] == self.GOAL:
-            return Direction.DOWN
-        elif self.map[y-1][x] == self.GOAL:
-            return Direction.UP
-        elif self.map[y][x+1] == self.GOAL:
-            return Direction.RIGHT
-        elif self.map[y][x-1] == self.GOAL:
-            return Direction.LEFT
-        else:
-            return None
 
     def eval_path(self, path: List[Direction]):
         cost = 0
@@ -69,36 +59,40 @@ class Maze:
 
         return maxsize
 
-    def generate_naive_path(self):
-        moves = []
-        x_pos, y_pos = self.start_pos
-        new_x, new_y = x_pos, y_pos
+    def random_walk(self):
+        path = []
+        x, y = self.start_pos
+        direction = choice(list(Direction))
+        xmove, ymove = direction.value
 
-        directions = list(Direction)
-        cur_direction = 0
-        while self.map[y_pos][x_pos] != self.GOAL:
-            move_to_goal = self.get_move_to_goal(x_pos, y_pos)
-            if move_to_goal:
-                moves.append(move_to_goal)
-                break
 
-            x_move, y_move = directions[cur_direction].value
-            new_x = x_pos + x_move
-            new_y = y_pos + y_move
-
-            if self.map[new_y][new_x] == self.WALL:
-                cur_direction = (cur_direction + 1) % len(directions)
+        while len(path) < self.n * self.m / 3:
+            if self.map[y+ymove][x+xmove] == 8:
+                path.append(direction)
+                return path, True
+            elif self.map[y+ymove][x+xmove] == 1:
+                direction = choice(list(Direction))
+                xmove, ymove = direction.value
             else:
-                x_pos, y_pos = new_x, new_y
-                moves.append(directions[cur_direction])
+                x += xmove
+                y += ymove
+                path.append(direction)
+                if random() < 0.15:
+                    direction = choice(list(Direction))
+                    xmove, ymove = direction.value
 
-        return moves
+        return path, False
 
+    def generate_naive_path(self):
+        found = False
+        while not found:
+            path, found = self.random_walk()
+
+        return path
 
 def tweak(path):
     copy = path.copy()
-    i = randrange(len(path))
-    j = randrange(len(path))
+    i, j = sample(range(len(path)), 2)
     copy[i], copy[j] = copy[j], copy[i]
 
     return copy
@@ -110,7 +104,6 @@ def simulated_annealing(maze, max_time):
     s = maze.generate_naive_path()
     best = s
     quality_best = maze.eval_path(best)
-    print(quality_best)
 
     start = time()
     while time() - start < max_time:
