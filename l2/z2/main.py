@@ -2,6 +2,7 @@ from math import exp
 from time import time
 import random
 from dataclasses import dataclass
+from sys import stderr
 
 
 INIT_TEMP = 100
@@ -20,14 +21,14 @@ class Block:
 
 
 class BlockMatrix:
-    def __init__(self, blocks = []):
+    def __init__(self, blocks, n, m):
         self.blocks = blocks 
+        self.n = n
+        self.m = m
 
     @classmethod
     def get_initialized(cls, n, m, k):
-        new = cls()
-        new.n = n
-        new.m = m
+        new = cls([], n, m)
         value_index = 0
         for i in range(0, n-k+1, k):
             block_height = n - i if i + 2*k > n else k
@@ -53,7 +54,7 @@ class BlockMatrix:
 
 
     def copy(self):
-        return BlockMatrix(self.blocks.copy())
+        return BlockMatrix(self.blocks.copy(), self.n, self.m)
 
     def __repr__(self):
         return '\n'.join(' ' .join(str(self[i,j]) for j in range(self.m)) for i in range(self.n))
@@ -72,58 +73,49 @@ def change_value(block_matrix, k):
     return matrix_copy
 
 
-def change_size(block_matrix, k):
+def merge_blocks(block_matrix, k):
+    for b1 in block_matrix.blocks:
+        for b2 in block_matrix.blocks:
+            if b1.start_column == b2.start_column and b1.width == b2.width:
+                start_row = min(b1.start_row, b2.start_row)
+                new_block = Block(start_row, b1.start_column, b1.width, b1.height+b2.height, b1.value)
+
+                return BlockMatrix(list(filter(lambda b: b != b1 and b != b2, block_matrix.blocks)) + [new_block], block_matrix.n, block_matrix.m)
+            elif b1.start_row == b2.start_row and b1.height == b2.height:
+                start_column = min(b1.start_column, b2.start_column)
+                new_block = Block(b1.start_row, start_column, b1.width+b2.width, b1.height, b1.value)
+                return BlockMatrix(list(filter(lambda b: b != b1 and b != b2, block_matrix.blocks)) + [new_block], block_matrix.n, block_matrix.m)
+
+    return block_matrix
+
+
+def split_blocks(block_matrix, k):
     matrix_copy = block_matrix.copy()
-    filtered = [block for block in matrix_copy.blocks if block.width > k or block.height > k]
-    if len(filtered) == 0:
-        return matrix_copy
 
-    block = random.choice(filtered)
+    for b in block_matrix.blocks:
+        if b.width > 2*k:
+            split_point = k + random.randrange(0, 2)
+            b1 = Block(b.start_row, b.start_column, split_point, b.height, b.value)
+            b2 = Block(b.start_row+split_point, b.start_column, b.width-split_point, b.height, b.value)
 
-    if block.width > k:
-        if block.start_column != 0:
-            for b in matrix_copy.blocks:
-                if b.start_column + b.width == block.start_column:
-                    b.width += 1
+            return BlockMatrix(list(filter(lambda block: block != b, block_matrix.blocks)) + [b1, b2], block_matrix.n, block_matrix.m)
 
-            block.start_column += 1
-        else:
-            for b in matrix_copy.blocks:
-                if block.start_column + block.width == b.start_column:
-                    b.start_column -= 1
+        elif b.height > 2*k:
+            split_point = k + random.randrange(0, 2)
+            b1 = Block(b.start_row, b.start_column, b.width, split_point, b.value)
+            b2 = Block(b.start_row, b.start_column+split_point, b.width, b.height-split_point, b.value)
 
-            block.width -= 1
-
-    if block.height > k:
-        if block.start_row != 0:
-            for b in matrix_copy.blocks:
-                if b.start_row + b.height == block.start_row:
-                    b.height += 1
-
-            block.start_row += 1
-        else:
-            for b in matrix_copy.blocks:
-                if block.start_row + block.height == b.start_row:
-                    b.start_row -= 1
-
-            block.height -= 1
+            return BlockMatrix(list(filter(lambda block: block != b, block_matrix.blocks)) + [b1, b2], block_matrix.n, block_matrix.m)
 
     return matrix_copy
 
 
-def swap_blocks(block_matrix, k):
-    matrix_copy = block_matrix.copy()
-    block1 = random.choice(matrix_copy.blocks)
-    block2 = random.choice(list(filter(lambda b: b != block1, matrix_copy.blocks)))
-
-    block1.value, block2.value = block2.value, block1.value
-
-    return matrix_copy
-
+def merge_and_split(block_matrix, k):
+    return split_blocks(merge_blocks(block_matrix, k), k)
 
 
 def tweak(block_matrix, k):
-    return random.choice([change_value, change_value, swap_blocks])(block_matrix, k)
+    return random.choice([change_value, merge_and_split])(block_matrix, k)
 
 
 
@@ -141,7 +133,7 @@ def simulated_annealing(max_time, matrix, n, m, k):
         quality_s = quality(s)
         quality_r = quality(r)
 
-        if quality_r < quality_s or random.random() < exp((quality_s - quality_r) / t):
+        if quality_r <= quality_s or random.random() < exp((quality_s - quality_r) / t):
             s = r
             quality_s = quality_r
 
@@ -153,13 +145,16 @@ def simulated_annealing(max_time, matrix, n, m, k):
             best = s
             quality_best = quality_s
 
-    return quality_best
+    return best, quality_best
 
 
 def main():
     time, n, m, k = list(map(int, input().split()))
     matrix = [list(map(int, input().split())) for _ in range(n)]
-    print(simulated_annealing(time, matrix, n, m, k))
+
+    result, quality = simulated_annealing(time, matrix, n, m, k)
+    print(quality)
+    print(result, file=stderr)
 
 
 
