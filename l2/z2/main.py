@@ -64,61 +64,66 @@ def matrix_distance(matrix, block_matrix, n, m):
     return 1 / (n * m) * sum((matrix[i][j] - block_matrix[i, j])**2 for j in range(m) for i in range(n))
 
 
-def tweak(block_matrix, k):
-    CHANGE_COLOR = 0
-    CHANGE_SIZE = 1
-    SWAP_BLOCKS = 2
 
+def change_value(block_matrix, k):
     matrix_copy = block_matrix.copy()
+    block = random.choice(matrix_copy.blocks)
+    block.value = random.choice(list(filter(lambda val: val != block.value, VALUES)))
+    return matrix_copy
 
-    mode = random.choice([CHANGE_COLOR, CHANGE_SIZE, SWAP_BLOCKS])
 
-    if mode == CHANGE_COLOR:
-        block = random.choice(matrix_copy.blocks)
-        block.value = random.choice([value for value in VALUES if value != block.value])
-    elif mode == CHANGE_SIZE:
-        filtered = [block for block in matrix_copy.blocks if block.width > k or block.height > k]
-        if len(filtered) == 0:
-            return matrix_copy
+def change_size(block_matrix, k):
+    matrix_copy = block_matrix.copy()
+    filtered = [block for block in matrix_copy.blocks if block.width > k or block.height > k]
+    if len(filtered) == 0:
+        return matrix_copy
 
-        block = random.choice(filtered)
+    block = random.choice(filtered)
 
-        if block.width > k:
-            if block.start_column != 0:
-                for b in matrix_copy.blocks:
-                    if b.start_column + b.width == block.start_column:
-                        b.width += 1
+    if block.width > k:
+        if block.start_column != 0:
+            for b in matrix_copy.blocks:
+                if b.start_column + b.width == block.start_column:
+                    b.width += 1
 
-                block.start_column += 1
-            else:
-                for b in matrix_copy.blocks:
-                    if block.start_column + block.width == b.start_column:
-                        b.start_column -= 1
-
-                block.width -= 1
-
-        if block.height > k:
-            if block.start_row != 0:
-                for b in matrix_copy.blocks:
-                    if b.start_row + b.height == block.start_row:
-                        b.height += 1
-
-                block.start_row += 1
-            else:
-                for b in matrix_copy.blocks:
-                    if block.start_row + block.height == b.start_row:
-                        b.start_row -= 1
-
-                block.height -= 1
-
+            block.start_column += 1
         else:
-            block1 = random.choice(matrix_copy.blocks)
-            block2 = random.choice(list(filter(lambda b: b != block1, matrix_copy.blocks)))
+            for b in matrix_copy.blocks:
+                if block.start_column + block.width == b.start_column:
+                    b.start_column -= 1
 
-            block1.value, block2.value = block2.value, block1.value
+            block.width -= 1
 
+    if block.height > k:
+        if block.start_row != 0:
+            for b in matrix_copy.blocks:
+                if b.start_row + b.height == block.start_row:
+                    b.height += 1
+
+            block.start_row += 1
+        else:
+            for b in matrix_copy.blocks:
+                if block.start_row + block.height == b.start_row:
+                    b.start_row -= 1
+
+            block.height -= 1
 
     return matrix_copy
+
+
+def swap_blocks(block_matrix, k):
+    matrix_copy = block_matrix.copy()
+    block1 = random.choice(matrix_copy.blocks)
+    block2 = random.choice(list(filter(lambda b: b != block1, matrix_copy.blocks)))
+
+    block1.value, block2.value = block2.value, block1.value
+
+    return matrix_copy
+
+
+
+def tweak(block_matrix, k):
+    return random.choice([change_value, change_value, swap_blocks])(block_matrix, k)
 
 
 
