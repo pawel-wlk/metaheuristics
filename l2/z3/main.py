@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import List
 from sys import maxsize
-from random import random, choice
+from random import random, choice, randrange
 from time import time
 from sys import stderr
 from math import exp
@@ -35,6 +35,19 @@ class Maze:
                 if el == self.AGENT:
                     return (j, i)
 
+
+    def get_move_to_goal(self, x, y):
+        if self.map[y+1][x] == self.GOAL:
+            return Direction.DOWN
+        elif self.map[y-1][x] == self.GOAL:
+            return Direction.UP
+        elif self.map[y][x+1] == self.GOAL:
+            return Direction.RIGHT
+        elif self.map[y][x-1] == self.GOAL:
+            return Direction.LEFT
+        else:
+            return None
+
     def eval_path(self, path: List[Direction]):
         cost = 0
         x_pos, y_pos = self.start_pos
@@ -56,16 +69,48 @@ class Maze:
 
         return maxsize
 
+    def generate_naive_path(self):
+        moves = []
+        x_pos, y_pos = self.start_pos
+        new_x, new_y = x_pos, y_pos
+
+        directions = list(Direction)
+        cur_direction = 0
+        while self.map[y_pos][x_pos] != self.GOAL:
+            move_to_goal = self.get_move_to_goal(x_pos, y_pos)
+            if move_to_goal:
+                moves.append(move_to_goal)
+                break
+
+            x_move, y_move = directions[cur_direction].value
+            new_x = x_pos + x_move
+            new_y = y_pos + y_move
+
+            if self.map[new_y][new_x] == self.WALL:
+                cur_direction = (cur_direction + 1) % len(directions)
+            else:
+                x_pos, y_pos = new_x, new_y
+                moves.append(directions[cur_direction])
+
+        return moves
+
 
 def tweak(path):
-    return path + [choice(list(Direction))]
+    copy = path.copy()
+    i = randrange(len(path))
+    j = randrange(len(path))
+    copy[i], copy[j] = copy[j], copy[i]
+
+    return copy
+
 
 def simulated_annealing(maze, max_time):
     t = INIT_TEMP
 
-    s = []
+    s = maze.generate_naive_path()
     best = s
     quality_best = maze.eval_path(best)
+    print(quality_best)
 
     start = time()
     while time() - start < max_time:
@@ -85,9 +130,7 @@ def simulated_annealing(maze, max_time):
             best = s
             quality_best = quality_s
 
-
     return best
-
 
 
 if __name__ == "__main__":
