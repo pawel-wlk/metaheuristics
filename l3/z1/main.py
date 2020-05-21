@@ -4,7 +4,7 @@ import math
 
 POPSIZE = 10
 T_SIZE = 4
-NOISE = 0.01
+NOISE = 0.1
 
 
 def yang(x, eps):
@@ -29,8 +29,8 @@ def crossover(parent_a, parent_b):
 
 
 def mutate(individual):
-    mutation_point = random.randrange(len(individual))
-    return [gene if i == mutation_point else random.gauss(gene, NOISE) for i, gene in enumerate(individual)]
+    # mutation_point = random.randrange(len(individual))
+    return [gene * random.gauss(1, NOISE) for i, gene in enumerate(individual)]
 
 def tournament_selection(fitnesses):
     popsize = len(fitnesses)
