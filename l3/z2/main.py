@@ -14,12 +14,13 @@ def drop_duplicates(seq):
 
 
 def word_score(word):
-    score = sum(letter_value[char] for char in word)
     counts = Counter(word)
 
     for letter, count in counts.items():
         if count > letter_count[letter]:
             return 0
+
+    score = sum(letter_value[char] for char in word)
 
     if word in dictionary:
         return score
@@ -37,10 +38,13 @@ def mutate(word):
 
     letter = random.choice(remaining)
     index = random.randint(0, len(word))
-    if random.random() > 0.5:
+
+    rand = random.random()
+    if rand > 0.1:
         word = word[:index] + letter + word[index+1:]
     else:
         word = word[:index] + letter + word[index:]
+
     return word
 
 
