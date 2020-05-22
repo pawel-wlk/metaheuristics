@@ -3,9 +3,14 @@ import random
 import math
 from collections import defaultdict, Counter
 
-POP_SIZE = 5
-ELITE_SIZE = 1
+POP_SIZE = 10
+ELITE_SIZE = 4
 T_SIZE = 2
+
+
+def drop_duplicates(seq):
+    seen = set()
+    return [x for x in seq if not (x in seen or seen.add(x))]
 
 
 def word_score(word):
@@ -22,26 +27,22 @@ def word_score(word):
         return 0
 
 
-def mutate(individual):
-    letters = Counter(individual)
+def mutate(word):
+    letters = Counter(word)
     remaining_dict = {
         char: letter_count[char]-letters[char] for char in letter_count}
     remaining = [char for char, value in remaining_dict.items() if value > 0]
-
     if not remaining:
-        return individual
+        return word
 
-    index = random.randint(0, len(individual))
     letter = random.choice(remaining)
-
-    rand = random.random()
-
-    if rand < 0.5:
-        individual = individual[:index] + letter[0] + individual[index+1:]
+    index = random.randint(0, len(word))
+    if random.random() > 0.5:
+        word = word[:index] + letter + word[index+1:]
     else:
-        individual = individual[:index] + letter + individual[index:]
+        word = word[:index] + letter + word[index:]
+    return word
 
-    return individual
 
 
 def crossover(parent_a, parent_b):
@@ -51,18 +52,8 @@ def crossover(parent_a, parent_b):
 
     l = min(len(v), len(w))
 
-    # for i in range(l):
-    #     if random.random() < p:
-    #         v[i], w[i] = w[i], v[i]
-
-    c = random.randrange(l)
-    d = random.randrange(l)
-
-    if c > d:
-        c, d = d, c
-
-    if c != d:
-        for i in range(c, d+1):
+    for i in range(l):
+        if random.random() < p:
             v[i], w[i] = w[i], v[i]
 
     return ''.join(v), ''.join(w)
@@ -101,7 +92,7 @@ def genetic_algorithm(max_time, initial_population):
                 best_fitness = fitness
                 last_best = time.time()
 
-        q = list(map(lambda pair: pair[1], sorted(enumerate(
+        q = drop_duplicates(map(lambda pair: pair[1], sorted(enumerate(
             population), key=lambda pair: fitnesses[pair[0]], reverse=True)))[:ELITE_SIZE]
 
         for _ in range((POP_SIZE - ELITE_SIZE)//2):
