@@ -2,6 +2,7 @@ import time
 import random
 import math
 from collections import defaultdict, Counter
+import sys
 
 POP_SIZE = 10
 ELITE_SIZE = 4
@@ -85,7 +86,6 @@ def genetic_algorithm(max_time, initial_population):
     start = time.time()
 
     while time.time() - start < max_time:
-        print(population)
         fitnesses = []
         for individual in population:
             fitness = word_score(individual)
@@ -131,4 +131,5 @@ if __name__ == "__main__":
         words.append(input().strip())
 
     best, fitness = genetic_algorithm(max_time, words)
-    print(best, fitness)
+    print(fitness)
+    print(best, file=sys.stderr)
