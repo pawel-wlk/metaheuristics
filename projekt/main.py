@@ -6,7 +6,9 @@ import time
 from sys import stderr
 import math
 
-T_SIZE = 4
+T_SIZE = 7
+ELITE_SIZE = 0
+POPSIZE = 8
 
 
 class Direction(Enum):
@@ -15,14 +17,28 @@ class Direction(Enum):
     DOWN = (0, 1)
     LEFT = (-1, 0)
 
+MOVE_NAMES = {Direction.UP: 'U', Direction.DOWN: 'D',
+              Direction.RIGHT: 'R', Direction.LEFT: 'L'}
+
+
+def drop_duplicates(seq):
+    seen = set()
+    result = []
+    for x in seq:
+        s = ''.join(MOVE_NAMES[m] for m in x)
+        if not s in seen:
+            result.append(x)
+            seen.add(s)
+    return result
+
 
 class Maze:
     EMPTY = 0
     AGENT = 5
     WALL = 1
     GOAL = 8
-    HORIZONTAL_TUNNEL = 2
-    VERTICAL_TUNNEL = 3
+    HORIZONTAL_TUNNEL = 3
+    VERTICAL_TUNNEL = 2
 
     def __init__(self, maze_map, max_steps):
         self.map = maze_map
@@ -129,9 +145,8 @@ def tournament_selection(fitnesses):
     return best
 
 
-def genetic_algorithm(max_time, maze):
-    popsize = 10
-    population = [maze.generate_naive_path() for _ in range(popsize)]
+def genetic_algorithm(max_time, maze, init_solution):
+    population = [init_solution] + [maze.generate_naive_path() for _ in range(POPSIZE - 1)]
 
     best = None
     best_fitness = 100000
@@ -149,9 +164,10 @@ def genetic_algorithm(max_time, maze):
                 best_fitness = fitness
                 last_best = time.time()
 
-        q = []
+        q = drop_duplicates(map(lambda pair: pair[1], sorted(enumerate(
+            population), key=lambda pair: fitnesses[pair[0]], reverse=True)))[:ELITE_SIZE]
 
-        for _ in range(popsize//2):
+        for _ in range((POPSIZE-ELITE_SIZE)//2):
             parent_a = population[tournament_selection(fitnesses)]
             parent_b = population[tournament_selection(fitnesses)]
 
@@ -161,8 +177,8 @@ def genetic_algorithm(max_time, maze):
 
         population = q
 
-        if time.time() - last_best > math.log(max_time):
-            break
+        # if time.time() - last_best > math.log(max_time):
+        #     break
 
     return best, best_fitness
 
@@ -172,15 +188,17 @@ if __name__ == "__main__":
 
     maze_map = [[int(char) for char in input()[:m]] for _ in range(n)]
 
+
     moves = {'U': Direction.UP, 'D': Direction.DOWN,
              'R': Direction.RIGHT, 'L': Direction.LEFT}
 
+    init_solution = [moves[c] for c in input().strip()]
+
     maze = Maze(maze_map, n*m)
 
-    best, fitness = genetic_algorithm(max_time, maze)
+    max_time = 10
+    best, fitness = genetic_algorithm(max_time, maze, init_solution)
 
-    move_names = {Direction.UP: 'U', Direction.DOWN: 'D',
-                  Direction.RIGHT: 'R', Direction.LEFT: 'L'}
 
     print(fitness)
-    print(''.join(move_names[move] for move in best[:fitness]), file=stderr)
+    print(''.join(MOVE_NAMES[move] for move in best[:fitness]), file=stderr)
