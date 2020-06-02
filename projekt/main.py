@@ -103,30 +103,17 @@ class Maze:
         return path
 
 
-def crossover(parent_a, parent_b):
-    v = parent_a.copy()
-    w = parent_b.copy()
+def crossover(v, w):
+    i = random.randrange(len(v))
+    j = random.randrange(len(w))
 
-    l = min(len(v), len(w))
-
-    c = random.randrange(l)
-    d = random.randrange(l)
-
-    if c > d:
-        c, d = d, c
-
-    if c != d:
-        for i in range(c, d):
-            v[i], w[i] = w[i], v[i]
-
-    return v, w
+    return v[:i] + w[j:], w[:j] + v[i:]
 
 
 def mutate(individual):
     i = random.randrange(len(individual))
-    j = random.randrange(len(individual))
-    individual[i], individual[j] = individual[j], individual[i]
-    return individual
+    j = random.randrange(i, len(individual))
+    return individual[:i+1] + individual[j:i:-1] + individual[j+1:]
 
 
 def tournament_selection(fitnesses):
