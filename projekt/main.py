@@ -2,14 +2,12 @@ from enum import Enum
 from typing import List
 from sys import maxsize
 import random
-import time
+from time import time
 from sys import stderr
 import math
 
-T_SIZE = 7
-ELITE_SIZE = 0
-POPSIZE = 8
-
+INIT_TEMP = 100
+DECREASE_FACTOR = 0.99
 
 class Direction(Enum):
     UP = (0, -1)
@@ -19,17 +17,6 @@ class Direction(Enum):
 
 MOVE_NAMES = {Direction.UP: 'U', Direction.DOWN: 'D',
               Direction.RIGHT: 'R', Direction.LEFT: 'L'}
-
-
-def drop_duplicates(seq):
-    seen = set()
-    result = []
-    for x in seq:
-        s = ''.join(MOVE_NAMES[m] for m in x)
-        if not s in seen:
-            result.append(x)
-            seen.add(s)
-    return result
 
 
 class Maze:
@@ -99,14 +86,24 @@ class Maze:
                 path.append(direction)
                 return path, True
             elif self.map[y+ymove][x+xmove] == 1:
-                direction = random.choice(list(Direction))
+                if self.map[y][x] == self.HORIZONTAL_TUNNEL:
+                    direction = random.choice((Direction.LEFT, Direction.RIGHT))
+                elif self.map[y][x] == self.VERTICAL_TUNNEL:
+                    direction = random.choice((Direction.UP, Direction.DOWN))
+                else:
+                    direction = random.choice(list(Direction))
                 xmove, ymove = direction.value
             else:
                 x += xmove
                 y += ymove
                 path.append(direction)
                 if random.random() < 0.15:
-                    direction = random.choice(list(Direction))
+                    if self.map[y][x] == self.HORIZONTAL_TUNNEL:
+                        direction = random.choice((Direction.LEFT, Direction.RIGHT))
+                    elif self.map[y][x] == self.VERTICAL_TUNNEL:
+                        direction = random.choice((Direction.UP, Direction.DOWN))
+                    else:
+                        direction = random.choice(list(Direction))
                     xmove, ymove = direction.value
 
         return path, False
@@ -118,70 +115,39 @@ class Maze:
 
         return path
 
-
-def crossover(v, w):
-    i = random.randrange(len(v))
-    j = random.randrange(len(w))
-
-    return v[:i] + w[j:], w[:j] + v[i:]
+def tweak(path):
+    i = random.randrange(len(path))
+    j = random.randrange(i, len(path))
+    return path[:i+1] + path[j:i:-1] + path[j+1:]
 
 
-def mutate(individual):
-    i = random.randrange(len(individual))
-    j = random.randrange(i, len(individual))
-    return individual[:i+1] + individual[j:i:-1] + individual[j+1:]
+def simulated_annealing(max_time, maze, init_solution):
+    t = INIT_TEMP
 
+    s = maze.generate_naive_path()
+    # s = init_solution
+    best = s
+    quality_best = maze.eval_path(best)
 
-def tournament_selection(fitnesses):
-    popsize = len(fitnesses)
+    start = time()
+    while time() - start < max_time and t>0:
+        r = tweak(s)
+        quality_s = maze.eval_path(s)
+        quality_r = maze.eval_path(r)
 
-    best = random.randrange(popsize)
+        if quality_r < quality_s or random.random() < math.exp((quality_s - quality_r) / t):
+            s = r
+            quality_s = quality_r
 
-    for i in range(1, T_SIZE):
-        n = random.randrange(popsize)
-        if fitnesses[n] < fitnesses[best]:
-            best = n
+        t *= DECREASE_FACTOR
 
-    return best
-
-
-def genetic_algorithm(max_time, maze, init_solution):
-    population = [init_solution] + [maze.generate_naive_path() for _ in range(POPSIZE - 1)]
-
-    best = None
-    best_fitness = 100000
-
-    start = time.time()
-
-    while time.time() - start < max_time:
-        fitnesses = []
-        for individual in population:
-            fitness = maze.eval_path(individual)
-            fitnesses.append(fitness)
-
-            if best is None or fitness < best_fitness:
-                best = individual
-                best_fitness = fitness
-                last_best = time.time()
-
-        q = drop_duplicates(map(lambda pair: pair[1], sorted(enumerate(
-            population), key=lambda pair: fitnesses[pair[0]], reverse=True)))[:ELITE_SIZE]
-
-        for _ in range((POPSIZE-ELITE_SIZE)//2):
-            parent_a = population[tournament_selection(fitnesses)]
-            parent_b = population[tournament_selection(fitnesses)]
-
-            child_a, child_b = crossover(parent_a, parent_b)
-
-            q += [mutate(child_a), mutate(child_b)]
-
-        population = q
-
+        if quality_s < quality_best:
+            best = s
+            quality_best = quality_s
         # if time.time() - last_best > math.log(max_time):
         #     break
 
-    return best, best_fitness
-
+    return best, quality_best
 
 if __name__ == "__main__":
     max_time, n, m = [int(word) for word in input().split()]
@@ -197,8 +163,8 @@ if __name__ == "__main__":
     maze = Maze(maze_map, n*m)
 
     max_time = 10
-    best, fitness = genetic_algorithm(max_time, maze, init_solution)
+    best, cost = simulated_annealing(max_time, maze, init_solution)
 
 
-    print(fitness)
-    print(''.join(MOVE_NAMES[move] for move in best[:fitness]), file=stderr)
+    print(cost)
+    print(''.join(MOVE_NAMES[move] for move in best[:cost]), file=stderr)
