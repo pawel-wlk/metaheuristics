@@ -6,8 +6,8 @@ from time import time
 from sys import stderr
 import math
 
-INIT_TEMP = 1000
-DECREASE_FACTOR = 0.9
+INIT_TEMP = 200
+DECREASE_FACTOR = 0.99
 
 
 class Direction(Enum):
@@ -131,14 +131,19 @@ class Maze:
 def tweak(path):
     i = random.randrange(len(path))
     j = random.randrange(i, len(path))
-    return path[:i+1] + path[j:i:-1] + path[j+1:]
+
+    if random.random() < 0.5:
+        return path[:i+1] + path[j:i:-1] + path[j+1:]
+    else:
+        return path[:i+1] + [random.choice(list(Direction)) for _ in range(j-i)] + path[j+1:]
+
 
 
 def simulated_annealing(max_time, maze, init_solution):
     t = INIT_TEMP
 
-    s = maze.generate_naive_path()
-    # s = init_solution
+    # s = maze.generate_naive_path()
+    s = init_solution
     best = s
     quality_best = maze.eval_path(best)
     # t = 3*maze.eval_path(init_solution)
