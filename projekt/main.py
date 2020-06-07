@@ -6,8 +6,8 @@ from time import time
 from sys import stderr
 import math
 
-INIT_TEMP = 200
-DECREASE_FACTOR = 0.99
+INIT_TEMP = 1000
+DECREASE_FACTOR = 0.9
 
 
 class Direction(Enum):
@@ -48,8 +48,6 @@ class Maze:
 
         for direction in path:
             cost += 1
-            if cost > self.max_steps:
-                return maxsize
 
             if self.map[y_pos][x_pos] == self.HORIZONTAL_TUNNEL and direction in (Direction.UP, Direction.DOWN):
                 continue
@@ -75,64 +73,12 @@ class Maze:
 
         return maxsize
 
-    def random_walk(self):
-        path = []
-        x, y = self.start_pos
-
-        if self.map[y][x] == self.HORIZONTAL_TUNNEL:
-            direction = random.choice((Direction.LEFT, Direction.RIGHT))
-        elif self.map[y][x] == self.VERTICAL_TUNNEL:
-            direction = random.choice((Direction.UP, Direction.DOWN))
-        else:
-            direction = random.choice(list(Direction))
-
-        xmove, ymove = direction.value
-
-        while len(path) < self.n * self.m / 3:
-            if self.map[y+ymove][x+xmove] == self.GOAL:
-                path.append(direction)
-                return path, True
-            elif (self.map[y+ymove][x+xmove] == self.WALL) \
-                    or (self.map[y+ymove][x+xmove] == self.HORIZONTAL_TUNNEL and direction in (Direction.UP, Direction.DOWN)) \
-                    or (self.map[y+ymove][x+xmove] == self.VERTICAL_TUNNEL and direction in (Direction.LEFT, Direction.RIGHT)):
-                if self.map[y][x] == self.HORIZONTAL_TUNNEL:
-                    direction = random.choice(
-                        (Direction.LEFT, Direction.RIGHT))
-                elif self.map[y][x] == self.VERTICAL_TUNNEL:
-                    direction = random.choice((Direction.UP, Direction.DOWN))
-                else:
-                    direction = random.choice(list(Direction))
-                xmove, ymove = direction.value
-            else:
-                x += xmove
-                y += ymove
-                path.append(direction)
-                if random.random() < 0.15:
-                    if self.map[y][x] == self.HORIZONTAL_TUNNEL:
-                        direction = random.choice(
-                            (Direction.LEFT, Direction.RIGHT))
-                    elif self.map[y][x] == self.VERTICAL_TUNNEL:
-                        direction = random.choice(
-                            (Direction.UP, Direction.DOWN))
-                    else:
-                        direction = random.choice(list(Direction))
-                    xmove, ymove = direction.value
-
-        return path, False
-
-    def generate_naive_path(self):
-        found = False
-        while not found:
-            path, found = self.random_walk()
-
-        return path
-
 
 def tweak(path):
     i = random.randrange(len(path))
     j = random.randrange(i, len(path))
 
-    if random.random() < 0.5:
+    if random.random() < 0.8:
         return path[:i+1] + path[j:i:-1] + path[j+1:]
     else:
         return path[:i+1] + [random.choice(list(Direction)) for _ in range(j-i)] + path[j+1:]
@@ -142,15 +88,14 @@ def tweak(path):
 def simulated_annealing(max_time, maze, init_solution):
     t = INIT_TEMP
 
-    # s = maze.generate_naive_path()
     s = init_solution
     best = s
     quality_best = maze.eval_path(best)
-    # t = 3*maze.eval_path(init_solution)
 
     start = time()
     last_best = time()
     while time() - start < max_time and t > 0:
+        # print(t)
         r = tweak(s)
         quality_s = maze.eval_path(s)
         quality_r = maze.eval_path(r)
@@ -165,7 +110,7 @@ def simulated_annealing(max_time, maze, init_solution):
             best = s
             quality_best = quality_s
             last_best = time()
-        if time() - last_best > math.log(max_time):
+        if time() - last_best > min(0.5*math.log(max_time), 0.5*math.log(maze.n*maze.m/10)):
             break
 
     return best, quality_best
@@ -183,7 +128,6 @@ if __name__ == "__main__":
 
     maze = Maze(maze_map, n*m)
 
-    # max_time = 10
     best, cost = simulated_annealing(max_time, maze, init_solution)
 
     print(cost)
